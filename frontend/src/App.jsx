@@ -3,6 +3,7 @@ import './App.css'
 
 const API_BASE = 'http://localhost:8000'
 const WS_URL = 'ws://localhost:8000/ws'
+const BOOKCLUB_URL = import.meta.env.DEV ? 'http://localhost:5173' : '/bookclub'
 
 const SLOT_LABELS = [
   'Hero',
@@ -50,6 +51,7 @@ const SLOT_AREA_CLASSES = [
 function App() {
   const [stories, setStories] = useState([])
   const [showForm, setShowForm] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [formData, setFormData] = useState({
@@ -205,6 +207,31 @@ function App() {
 
   return (
     <div className="page">
+      <button
+        className="menu-button"
+        type="button"
+        aria-label="Open navigation menu"
+        onClick={() => setShowMenu((prev) => !prev)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
+      {showMenu ? (
+        <div className="menu-backdrop" onClick={() => setShowMenu(false)}>
+          <nav className="menu-panel" onClick={(event) => event.stopPropagation()}>
+            <p className="menu-title">Navigate</p>
+            <a href="/" onClick={() => setShowMenu(false)}>
+              Front Page
+            </a>
+            <a href={BOOKCLUB_URL} target="_blank" rel="noreferrer" onClick={() => setShowMenu(false)}>
+              Book Club Eliminator
+            </a>
+          </nav>
+        </div>
+      ) : null}
+
       <header className="newspaper-header">
         <div className="masthead-topline">
           <p className="edition">Local Edition</p>
