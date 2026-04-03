@@ -1,29 +1,52 @@
 .page {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 1rem 1rem 4rem;
+  padding: 0.85rem 0.85rem 4rem;
   color: #111;
+  background: #f6f1e7;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.18);
+  border: 1px solid #d8d0c2;
 }
 
 .newspaper-header {
-  text-align: center;
-  border-top: 4px double #111;
-  border-bottom: 4px double #111;
-  margin-bottom: 1rem;
-  padding: 0.75rem 0;
+  border-bottom: 3px double #111;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.35rem;
+}
+
+.masthead-topline {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .newspaper-header h1 {
-  font-family: "Times New Roman", serif;
-  text-transform: uppercase;
-  font-size: 2.8rem;
   margin: 0.2rem 0;
+  font-family: "Times New Roman", Georgia, serif;
+  text-transform: uppercase;
+  font-size: clamp(2.1rem, 5.9vw, 5.4rem);
+  letter-spacing: 0.015em;
+  text-align: center;
+  line-height: 0.95;
+}
+
+.masthead-subtitle {
+  margin: 0.15rem 0 0.35rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: clamp(0.72rem, 1.35vw, 1.02rem);
+}
+
+.masthead-rule {
+  border-top: 1px solid #111;
 }
 
 .edition,
 .tagline {
   margin: 0;
-  font-size: 0.9rem;
 }
 
 .error-message {
@@ -33,58 +56,150 @@
 
 .newspaper-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: 1.1fr 1.1fr 1fr 1fr;
+  grid-template-areas:
+    "lead-left lead-main lead-main side-1"
+    "lead-left lead-main lead-main side-2"
+    "banner banner banner banner"
+    "mid-1 mid-1 mid-2 mid-2"
+    "brief-1 brief-2 brief-3 brief-4"
+    "brief-5 brief-6 brief-7 brief-8";
+  gap: 0;
+  border-top: 1px solid #111;
+  border-left: 1px solid #111;
 }
 
 .slot {
-  border: 1px solid #232323;
-  padding: 0.65rem;
-  background: #f8f4ea;
-  min-height: 170px;
+  border-right: 1px solid #111;
+  border-bottom: 1px solid #111;
+  padding: 0.55rem 0.58rem;
+  min-height: 124px;
+  background: #f6f1e7;
+  overflow: hidden;
 }
 
 .slot h2 {
-  margin: 0.2rem 0;
-  font-size: 1.1rem;
+  margin: 0.2rem 0 0.35rem;
+  font-size: 1.9rem;
+  line-height: 1.05;
+  font-weight: 600;
+}
+
+.slot-secondary h2,
+.slot-brief h2 {
+  font-size: 1.55rem;
+}
+
+.slot p {
+  margin: 0;
+  line-height: 1.22;
+}
+
+.slot .story-meta {
+  margin-bottom: 0.38rem;
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #333;
 }
 
 .slot-label {
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.72rem;
-  color: #4c4c4c;
-}
-
-.story-meta {
-  font-size: 0.78rem;
-  margin-bottom: 0.45rem;
+  letter-spacing: 0.09em;
+  font-size: 0.62rem;
+  color: #5a5a5a;
 }
 
 .story-image {
   width: 100%;
-  max-height: 180px;
-  object-fit: cover;
-  margin-bottom: 0.5rem;
-  border: 1px solid #323232;
+  height: 235px;
+  object-fit: contain;
+  object-position: center;
+  margin: 0.35rem 0 0.45rem;
+  border: 1px solid #222;
+  background: #ece5d7;
 }
 
-.slot-hero {
-  grid-column: span 2;
-  grid-row: span 2;
-  background: #f0e6cc;
+.story-image-lead {
+  height: 340px;
 }
 
-.slot-secondary {
-  grid-column: span 1;
+.story-flow {
+  margin-top: 0.15rem;
 }
 
-.slot-brief {
-  min-height: 130px;
+.story-flow::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+.story-image-wrap {
+  width: 46%;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.story-image-wrap.hero {
+  width: 54%;
+}
+
+.story-image-wrap.secondary {
+  width: 40%;
+}
+
+.story-image-wrap.left {
+  float: left;
+  margin-right: 0.55rem;
+}
+
+.story-image-wrap.right {
+  float: right;
+  margin-left: 0.55rem;
+}
+
+.story-image-inline {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: contain;
+  margin: 0;
+}
+
+.story-image-brief {
+  height: 130px;
+}
+
+.story-copy {
+  white-space: pre-line;
+  text-align: left;
+}
+
+.hero-copy {
+  text-align: justify;
+}
+
+.hero-copy::first-letter {
+  float: left;
+  font-size: 2.35em;
+  line-height: 0.9;
+  margin-right: 0.08em;
+  margin-top: 0.04em;
+  font-family: "Times New Roman", Georgia, serif;
+  font-weight: 700;
+}
+
+.secondary-copy {
+  font-size: 0.95rem;
+  line-height: 1.28;
+}
+
+.slot-brief p:last-of-type {
+  font-size: 0.9rem;
 }
 
 .placeholder-text {
+  margin-top: 0.25rem;
   font-style: italic;
   color: #555;
 }
@@ -92,27 +207,87 @@
 .reactions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-top: 0.55rem;
+  gap: 0.22rem;
+  margin-top: 0.42rem;
 }
 
 .reactions button {
   border: 1px solid #333;
-  background: #fff;
-  font-size: 0.78rem;
-  padding: 0.15rem 0.35rem;
+  background: #faf7f1;
+  font-size: 0.72rem;
+  padding: 0.12rem 0.32rem;
   cursor: pointer;
+}
+
+.area-lead-left {
+  grid-area: lead-left;
+}
+
+.area-lead-main {
+  grid-area: lead-main;
+}
+
+.area-side-1 {
+  grid-area: side-1;
+}
+
+.area-side-2 {
+  grid-area: side-2;
+}
+
+.area-banner {
+  grid-area: banner;
+}
+
+.area-mid-1 {
+  grid-area: mid-1;
+}
+
+.area-mid-2 {
+  grid-area: mid-2;
+}
+
+.area-brief-1 {
+  grid-area: brief-1;
+}
+
+.area-brief-2 {
+  grid-area: brief-2;
+}
+
+.area-brief-3 {
+  grid-area: brief-3;
+}
+
+.area-brief-4 {
+  grid-area: brief-4;
+}
+
+.area-brief-5 {
+  grid-area: brief-5;
+}
+
+.area-brief-6 {
+  grid-area: brief-6;
+}
+
+.area-brief-7 {
+  grid-area: brief-7;
+}
+
+.area-brief-8 {
+  grid-area: brief-8;
 }
 
 .add-story-button {
   position: fixed;
-  right: 1.2rem;
-  bottom: 1.2rem;
-  width: 3.2rem;
-  height: 3.2rem;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  width: 3.15rem;
+  height: 3.15rem;
   border-radius: 999px;
-  border: none;
-  background: #111;
+  border: 1px solid #111;
+  background: #0f0f0f;
   color: #fff;
   font-size: 2rem;
   cursor: pointer;
@@ -130,8 +305,9 @@
 
 .modal {
   background: #fff;
-  width: min(620px, 100%);
+  width: min(700px, 100%);
   padding: 1rem;
+  border: 1px solid #222;
 }
 
 .modal form {
@@ -176,12 +352,27 @@
   color: #111;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 980px) {
   .newspaper-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "lead-main lead-main"
+      "lead-left side-1"
+      "side-2 banner"
+      "mid-1 mid-2"
+      "brief-1 brief-2"
+      "brief-3 brief-4"
+      "brief-5 brief-6"
+      "brief-7 brief-8";
   }
 
-  .slot-hero {
-    grid-column: span 2;
+  .slot h2 {
+    font-size: 1.35rem;
+  }
+
+  .story-image-wrap {
+    float: none;
+    width: 100%;
+    margin: 0.2rem 0 0.4rem;
   }
 }

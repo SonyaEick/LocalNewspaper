@@ -29,6 +29,24 @@ const REACTION_TYPES = [
   { id: 'laugh', label: 'Laugh', emoji: '😂' },
 ]
 
+const SLOT_AREA_CLASSES = [
+  'lead-main',
+  'lead-left',
+  'side-1',
+  'side-2',
+  'banner',
+  'mid-1',
+  'mid-2',
+  'brief-1',
+  'brief-2',
+  'brief-3',
+  'brief-4',
+  'brief-5',
+  'brief-6',
+  'brief-7',
+  'brief-8',
+]
+
 function App() {
   const [stories, setStories] = useState([])
   const [showForm, setShowForm] = useState(false)
@@ -148,19 +166,63 @@ function App() {
     return story.image_url || null
   }
 
+  const renderStoryBody = (story, index) => {
+    const image = getStoryImage(story)
+    const prefersLeftWrap = index % 2 === 0
+    const isHero = index === 0
+    const isSecondary = index > 0 && index < 7
+
+    if (index >= 7) {
+      return (
+        <>
+          {image ? (
+            <img
+              className="story-image story-image-brief"
+              src={image}
+              alt={story.headline}
+            />
+          ) : null}
+          <p>{story.summary_sentence}</p>
+        </>
+      )
+    }
+
+    return (
+      <div className="story-flow">
+        {image ? (
+          <figure
+            className={`story-image-wrap ${prefersLeftWrap ? 'left' : 'right'} ${isSecondary ? 'secondary' : ''} ${isHero ? 'hero' : ''}`}
+          >
+            <img className="story-image story-image-inline" src={image} alt={story.headline} />
+          </figure>
+        ) : null}
+        <p className={`story-copy ${isHero ? 'hero-copy' : ''} ${isSecondary ? 'secondary-copy' : ''}`}>
+          {story.main_story}
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="page">
       <header className="newspaper-header">
-        <p className="edition">Local Edition</p>
-        <h1>The Daily Neighborhood</h1>
-        <p className="tagline">A live community front page</p>
+        <div className="masthead-topline">
+          <p className="edition">Local Edition</p>
+          <p className="tagline">A live community front page</p>
+        </div>
+        <h1>The Addisonian</h1>
+        <p className="masthead-subtitle">Daily Neighborhood News</p>
+        <div className="masthead-rule" />
       </header>
 
       {errorMessage ? <p className="error-message">{errorMessage}</p> : null}
 
       <main className="newspaper-grid">
         {slots.map((slot, index) => (
-          <article key={slot.label} className={`slot slot-${slot.type}`}>
+          <article
+            key={slot.label}
+            className={`slot slot-${slot.type} area-${SLOT_AREA_CLASSES[index]}`}
+          >
             <p className="slot-label">{slot.label}</p>
             {slot.story ? (
               <>
@@ -168,14 +230,7 @@ function App() {
                 <p className="story-meta">
                   By {slot.story.author_name} • {new Date(slot.story.created_at).toLocaleString()}
                 </p>
-                {getStoryImage(slot.story) ? (
-                  <img
-                    className="story-image"
-                    src={getStoryImage(slot.story)}
-                    alt={slot.story.headline}
-                  />
-                ) : null}
-                <p>{index < 7 ? slot.story.main_story : slot.story.summary_sentence}</p>
+                {renderStoryBody(slot.story, index)}
                 <div className="reactions">
                   {REACTION_TYPES.map((reaction) => (
                     <button
