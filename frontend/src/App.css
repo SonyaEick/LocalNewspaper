@@ -1,0 +1,187 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 1rem 4rem;
+  color: #111;
+}
+
+.newspaper-header {
+  text-align: center;
+  border-top: 4px double #111;
+  border-bottom: 4px double #111;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0;
+}
+
+.newspaper-header h1 {
+  font-family: "Times New Roman", serif;
+  text-transform: uppercase;
+  font-size: 2.8rem;
+  margin: 0.2rem 0;
+}
+
+.edition,
+.tagline {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.error-message {
+  color: #8d1111;
+  text-align: center;
+}
+
+.newspaper-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.slot {
+  border: 1px solid #232323;
+  padding: 0.65rem;
+  background: #f8f4ea;
+  min-height: 170px;
+}
+
+.slot h2 {
+  margin: 0.2rem 0;
+  font-size: 1.1rem;
+}
+
+.slot-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  color: #4c4c4c;
+}
+
+.story-meta {
+  font-size: 0.78rem;
+  margin-bottom: 0.45rem;
+}
+
+.story-image {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  margin-bottom: 0.5rem;
+  border: 1px solid #323232;
+}
+
+.slot-hero {
+  grid-column: span 2;
+  grid-row: span 2;
+  background: #f0e6cc;
+}
+
+.slot-secondary {
+  grid-column: span 1;
+}
+
+.slot-brief {
+  min-height: 130px;
+}
+
+.placeholder-text {
+  font-style: italic;
+  color: #555;
+}
+
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.55rem;
+}
+
+.reactions button {
+  border: 1px solid #333;
+  background: #fff;
+  font-size: 0.78rem;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+}
+
+.add-story-button {
+  position: fixed;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 999px;
+  border: none;
+  background: #111;
+  color: #fff;
+  font-size: 2rem;
+  cursor: pointer;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  background: #fff;
+  width: min(620px, 100%);
+  padding: 1rem;
+}
+
+.modal form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.modal label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.modal input,
+.modal textarea {
+  border: 1px solid #444;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+.modal textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.form-actions button {
+  border: 1px solid #222;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  background: #111;
+  color: #fff;
+}
+
+.form-actions .ghost {
+  background: #fff;
+  color: #111;
+}
+
+@media (max-width: 900px) {
+  .newspaper-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .slot-hero {
+    grid-column: span 2;
+  }
+}
