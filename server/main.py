@@ -15,8 +15,15 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "newspaper.db"
-UPLOAD_DIR = BASE_DIR / "uploads"
+_data_dir_env = os.environ.get("NEWSPAPER_DATA_DIR", "").strip()
+if _data_dir_env:
+    _data_root = Path(_data_dir_env)
+    _data_root.mkdir(parents=True, exist_ok=True)
+    DB_PATH = _data_root / "newspaper.db"
+    UPLOAD_DIR = _data_root / "uploads"
+else:
+    DB_PATH = BASE_DIR / "newspaper.db"
+    UPLOAD_DIR = BASE_DIR / "uploads"
 MAX_VISIBLE_STORIES = 15
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -132,6 +139,17 @@ def on_startup() -> None:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/db")
+def health_db() -> dict[str, Any]:
+    """Sanity check for deployments: confirms SQLite file is readable/writable."""
+    try:
+        with closing(get_connection()) as conn:
+            conn.execute("SELECT 1")
+        return {"ok": True, "db_path": str(DB_PATH)}
+    except Exception as exc:
+        return {"ok": False, "db_path": str(DB_PATH), "error": str(exc)}
 
 
 @app.get("/stories/visible")
