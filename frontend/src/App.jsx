@@ -1,8 +1,45 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
-const API_BASE = 'http://localhost:8000'
-const WS_URL = 'ws://localhost:8000/ws'
+/**
+ * Dev: talk to local FastAPI.
+ * Prod: set VITE_API_BASE in .env.production (e.g. https://yourdomain.com), or leave unset to use
+ * same-origin URLs (/stories/visible, /ws, …) when Caddy proxies those paths to FastAPI.
+ */
+function apiBase() {
+  if (import.meta.env.DEV) {
+    return 'http://localhost:8000'
+  }
+  const fromEnv = import.meta.env.VITE_API_BASE
+  if (fromEnv) {
+    return String(fromEnv).replace(/\/$/, '')
+  }
+  return ''
+}
+
+function wsUrl() {
+  if (import.meta.env.DEV) {
+    return 'ws://localhost:8000/ws'
+  }
+  const explicit = import.meta.env.VITE_WS_URL
+  if (explicit) {
+    return String(explicit)
+  }
+  const base = import.meta.env.VITE_API_BASE
+  if (base) {
+    const url = new URL(String(base))
+    const proto = url.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${proto}//${url.host}/ws`
+  }
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${proto}//${window.location.host}/ws`
+  }
+  return 'ws://localhost:8000/ws'
+}
+
+const API_BASE = apiBase()
+const WS_URL = wsUrl()
 const BOOKCLUB_URL = import.meta.env.DEV ? 'http://localhost:5173' : '/bookclub'
 
 const SLOT_LABELS = [
@@ -88,7 +125,28 @@ function App() {
 
   useEffect(() => {
     const socket = new WebSocket(WS_URL)
-    socket.onmessage = () => {
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === 'reaction_updated' && data.story_id != null && data.reaction_type != null) {
+          setStories((prev) =>
+            prev.map((s) =>
+              s.id === data.story_id
+                ? {
+                    ...s,
+                    reactions: {
+                      ...s.reactions,
+                      [data.reaction_type]: data.count,
+                    },
+                  }
+                : s
+            )
+          )
+          return
+        }
+      } catch {
+        // fall through to full refresh
+      }
       fetchVisibleStories().catch(() => {
         setErrorMessage('Live update failed. Trying again soon.')
       })
@@ -153,12 +211,47 @@ function App() {
   }
 
   const reactToStory = async (storyId, reactionType) => {
-    const payload = new FormData()
-    payload.append('reaction_type', reactionType)
-    await fetch(`${API_BASE}/stories/${storyId}/react`, {
-      method: 'POST',
-      body: payload,
-    })
+    setStories((prev) =>
+      prev.map((s) =>
+        s.id === storyId
+          ? {
+              ...s,
+              reactions: {
+                ...s.reactions,
+                [reactionType]: (s.reactions?.[reactionType] ?? 0) + 1,
+              },
+            }
+          : s
+      )
+    )
+    try {
+      const payload = new FormData()
+      payload.append('reaction_type', reactionType)
+      const response = await fetch(`${API_BASE}/stories/${storyId}/react`, {
+        method: 'POST',
+        body: payload,
+      })
+      if (!response.ok) {
+        await fetchVisibleStories()
+        return
+      }
+      const data = await response.json()
+      setStories((prev) =>
+        prev.map((s) =>
+          s.id === data.story_id
+            ? {
+                ...s,
+                reactions: {
+                  ...s.reactions,
+                  [data.reaction_type]: data.count,
+                },
+              }
+            : s
+        )
+      )
+    } catch {
+      await fetchVisibleStories()
+    }
   }
 
   const getStoryImage = (story) => {
@@ -237,7 +330,7 @@ function App() {
           <p className="edition">Local Edition</p>
           <p className="tagline">A live community front page</p>
         </div>
-        <h1>The Addisonian</h1>
+        <h1>The Artisonian</h1>
         <p className="masthead-subtitle">Daily Neighborhood News</p>
         <div className="masthead-rule" />
       </header>
