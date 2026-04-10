@@ -40,7 +40,7 @@ function wsUrl() {
 
 const API_BASE = apiBase()
 const WS_URL = wsUrl()
-const BOOKCLUB_URL = import.meta.env.DEV ? 'http://localhost:5173' : '/bookclub'
+const BOOKCLUB_URL = import.meta.env.DEV ? 'http://localhost:5173' : '/bookclub/'
 
 const SLOT_LABELS = [
   'Hero',
@@ -318,8 +318,8 @@ function App() {
             <a href="/" onClick={() => setShowMenu(false)}>
               Front Page
             </a>
-            <a href={BOOKCLUB_URL} target="_blank" rel="noreferrer" onClick={() => setShowMenu(false)}>
-              Book Club Eliminator
+            <a href={BOOKCLUB_URL} onClick={() => setShowMenu(false)}>
+              BookClub Eliminator
             </a>
           </nav>
         </div>
