@@ -85,6 +85,16 @@ const SLOT_AREA_CLASSES = [
   'brief-8',
 ]
 
+function GalleryStackIcon() {
+  return (
+    <svg className="gallery-stack-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="6" width="14" height="11" rx="1" fill="currentColor" opacity="0.35" />
+      <rect x="6" y="4" width="14" height="11" rx="1" fill="currentColor" opacity="0.55" />
+      <rect x="8" y="2" width="14" height="11" rx="1" fill="currentColor" />
+    </svg>
+  )
+}
+
 function App() {
   const [stories, setStories] = useState([])
   const [showForm, setShowForm] = useState(false)
@@ -99,7 +109,10 @@ function App() {
     main_story: '',
     image_url: '',
     image_upload: null,
+    extra_image_urls: '',
+    extra_image_files: [],
   })
+  const [photoLightbox, setPhotoLightbox] = useState(null)
 
   const slots = useMemo(() => {
     return SLOT_LABELS.map((label, index) => ({
@@ -126,6 +139,29 @@ function App() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [expandedBriefId])
+
+  useEffect(() => {
+    if (photoLightbox == null) return undefined
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setPhotoLightbox(null)
+      if (e.key === 'ArrowLeft') {
+        setPhotoLightbox((prev) =>
+          prev && prev.slides.length > 1
+            ? { ...prev, index: (prev.index - 1 + prev.slides.length) % prev.slides.length }
+            : prev
+        )
+      }
+      if (e.key === 'ArrowRight') {
+        setPhotoLightbox((prev) =>
+          prev && prev.slides.length > 1
+            ? { ...prev, index: (prev.index + 1) % prev.slides.length }
+            : prev
+        )
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [photoLightbox])
 
   const fetchVisibleStories = async () => {
     const response = await fetch(`${API_BASE}/stories/visible`)
@@ -181,6 +217,13 @@ function App() {
       setFormData((prev) => ({ ...prev, image_upload: files?.[0] ?? null }))
       return
     }
+    if (name === 'extra_image_uploads') {
+      setFormData((prev) => ({
+        ...prev,
+        extra_image_files: files?.length ? Array.from(files) : [],
+      }))
+      return
+    }
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
@@ -192,6 +235,8 @@ function App() {
       main_story: '',
       image_url: '',
       image_upload: null,
+      extra_image_urls: '',
+      extra_image_files: [],
     })
   }
 
@@ -208,6 +253,10 @@ function App() {
       payload.append('image_url', formData.image_url)
       if (formData.image_upload) {
         payload.append('image_upload', formData.image_upload)
+      }
+      payload.append('extra_image_urls', formData.extra_image_urls)
+      for (const file of formData.extra_image_files) {
+        payload.append('extra_image_uploads', file)
       }
 
       const response = await fetch(`${API_BASE}/stories/add`, {
@@ -280,6 +329,51 @@ function App() {
     return story.image_url || null
   }
 
+  const resolveExtraImageUrl = (ex) => {
+    if (ex.image_upload_url) return `${API_BASE}${ex.image_upload_url}`
+    return ex.image_url || null
+  }
+
+  const buildGallerySlides = (story) => {
+    const slides = []
+    const main = getStoryImage(story)
+    if (main) slides.push({ src: main, key: `main-${story.id}` })
+    for (let i = 0; i < (story.extra_images?.length ?? 0); i += 1) {
+      const u = resolveExtraImageUrl(story.extra_images[i])
+      if (u) slides.push({ src: u, key: `ex-${story.id}-${i}` })
+    }
+    return slides
+  }
+
+  const hasExtraPhotos = (story) => (story.extra_images?.length ?? 0) > 0
+
+  const openPhotoLightbox = (story, startIndex = 0) => {
+    const slides = buildGallerySlides(story)
+    if (slides.length === 0) return
+    setPhotoLightbox({ slides, index: Math.min(startIndex, slides.length - 1), headline: story.headline })
+  }
+
+  function ImageWithGalleryOverlay({ story, children, className }) {
+    const showBadge = hasExtraPhotos(story)
+    return (
+      <div className={`story-image-frame ${className ?? ''}`}>
+        {children}
+        {showBadge ? (
+          <button
+            type="button"
+            className="gallery-corner-btn"
+            onClick={() => openPhotoLightbox(story, 0)}
+            aria-label={`View ${story.extra_images.length} additional photos`}
+            title="More photos"
+          >
+            <GalleryStackIcon />
+            <span className="gallery-corner-count">{story.extra_images.length}</span>
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
   const renderStoryBody = (story, index) => {
     const image = getStoryImage(story)
     const prefersLeftWrap = index % 2 === 0
@@ -290,11 +384,18 @@ function App() {
       return (
         <>
           {image ? (
-            <img
-              className="story-image story-image-brief"
-              src={image}
-              alt={story.headline}
-            />
+            <ImageWithGalleryOverlay story={story} className="story-image-frame--brief">
+              <img className="story-image story-image-brief" src={image} alt={story.headline} />
+            </ImageWithGalleryOverlay>
+          ) : hasExtraPhotos(story) ? (
+            <button
+              type="button"
+              className="brief-photos-only-btn"
+              onClick={() => openPhotoLightbox(story, 0)}
+            >
+              <GalleryStackIcon />
+              <span>{story.extra_images.length} photos</span>
+            </button>
           ) : null}
           <p className="brief-summary">{story.summary_sentence}</p>
           <button
@@ -314,7 +415,22 @@ function App() {
           <figure
             className={`story-image-wrap ${prefersLeftWrap ? 'left' : 'right'} ${isSecondary ? 'secondary' : ''} ${isHero ? 'hero' : ''}`}
           >
-            <img className="story-image story-image-inline" src={image} alt={story.headline} />
+            <ImageWithGalleryOverlay story={story}>
+              <img className="story-image story-image-inline" src={image} alt={story.headline} />
+            </ImageWithGalleryOverlay>
+          </figure>
+        ) : hasExtraPhotos(story) ? (
+          <figure
+            className={`story-image-wrap story-image-wrap--extras-only ${prefersLeftWrap ? 'left' : 'right'} ${isSecondary ? 'secondary' : ''} ${isHero ? 'hero' : ''}`}
+          >
+            <button
+              type="button"
+              className="inline-photos-only-btn"
+              onClick={() => openPhotoLightbox(story, 0)}
+            >
+              <GalleryStackIcon />
+              <span>View {story.extra_images.length} photos</span>
+            </button>
           </figure>
         ) : null}
         <p className={`story-copy ${isHero ? 'hero-copy' : ''} ${isSecondary ? 'secondary-copy' : ''}`}>
@@ -432,14 +548,102 @@ function App() {
               {new Date(expandedBriefStory.created_at).toLocaleString()}
             </p>
             {getStoryImage(expandedBriefStory) ? (
-              <img
-                className="read-modal-image"
-                src={getStoryImage(expandedBriefStory)}
-                alt={expandedBriefStory.headline}
-              />
+              <ImageWithGalleryOverlay story={expandedBriefStory} className="read-modal-image-frame">
+                <img
+                  className="read-modal-image"
+                  src={getStoryImage(expandedBriefStory)}
+                  alt={expandedBriefStory.headline}
+                />
+              </ImageWithGalleryOverlay>
+            ) : hasExtraPhotos(expandedBriefStory) ? (
+              <button
+                type="button"
+                className="read-modal-photos-btn"
+                onClick={() => openPhotoLightbox(expandedBriefStory, 0)}
+              >
+                <GalleryStackIcon />
+                View {expandedBriefStory.extra_images.length} photos
+              </button>
             ) : null}
             <div className="read-modal-body">{expandedBriefStory.main_story}</div>
           </article>
+        </div>
+      ) : null}
+
+      {photoLightbox ? (
+        <div
+          className="modal-backdrop photo-lightbox-backdrop"
+          onClick={() => setPhotoLightbox(null)}
+          role="presentation"
+        >
+          <div
+            className="photo-lightbox"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Photo gallery"
+          >
+            <button
+              type="button"
+              className="photo-lightbox-close"
+              onClick={() => setPhotoLightbox(null)}
+              aria-label="Close gallery"
+            >
+              ×
+            </button>
+            <p className="photo-lightbox-caption">{photoLightbox.headline}</p>
+            <div className="photo-lightbox-stage">
+              {photoLightbox.slides.length > 1 ? (
+                <button
+                  type="button"
+                  className="photo-lightbox-nav photo-lightbox-prev"
+                  onClick={() =>
+                    setPhotoLightbox((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            index:
+                              (prev.index - 1 + prev.slides.length) % prev.slides.length,
+                          }
+                        : prev
+                    )
+                  }
+                  aria-label="Previous image"
+                >
+                  ‹
+                </button>
+              ) : null}
+              <img
+                className="photo-lightbox-img"
+                src={photoLightbox.slides[photoLightbox.index]?.src}
+                alt=""
+              />
+              {photoLightbox.slides.length > 1 ? (
+                <button
+                  type="button"
+                  className="photo-lightbox-nav photo-lightbox-next"
+                  onClick={() =>
+                    setPhotoLightbox((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            index: (prev.index + 1) % prev.slides.length,
+                          }
+                        : prev
+                    )
+                  }
+                  aria-label="Next image"
+                >
+                  ›
+                </button>
+              ) : null}
+            </div>
+            {photoLightbox.slides.length > 1 ? (
+              <p className="photo-lightbox-counter">
+                {photoLightbox.index + 1} / {photoLightbox.slides.length}
+              </p>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -476,6 +680,26 @@ function App() {
               <label>
                 Upload Image (optional)
                 <input name="image_upload" type="file" accept="image/*" onChange={handleInputChange} />
+              </label>
+              <label>
+                Optional additional photos — image URLs (one per line)
+                <textarea
+                  name="extra_image_urls"
+                  value={formData.extra_image_urls}
+                  onChange={handleInputChange}
+                  placeholder="https://…"
+                  rows={3}
+                />
+              </label>
+              <label>
+                Optional additional photos — uploads (select multiple)
+                <input
+                  name="extra_image_uploads"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleInputChange}
+                />
               </label>
               <div className="form-actions">
                 <button type="button" className="ghost" onClick={() => setShowForm(false)}>

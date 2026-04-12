@@ -6,7 +6,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, WebSocket, WebSocketDisconnect, UploadFile
@@ -103,7 +103,56 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS story_extra_images (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                story_id INTEGER NOT NULL,
+                image_url TEXT,
+                image_upload_path TEXT,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY(story_id) REFERENCES stories(id) ON DELETE CASCADE
+            )
+            """
+        )
         conn.commit()
+
+
+def _row_to_extra_image(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "image_url": row["image_url"],
+        "image_upload_url": f"/uploads/{row['image_upload_path']}" if row["image_upload_path"] else None,
+    }
+
+
+def load_extra_images_map(conn: sqlite3.Connection, story_ids: list[int]) -> dict[int, list[dict[str, Any]]]:
+    if not story_ids:
+        return {}
+    placeholders = ",".join("?" for _ in story_ids)
+    rows = conn.execute(
+        f"""
+        SELECT story_id, image_url, image_upload_path, sort_order
+        FROM story_extra_images
+        WHERE story_id IN ({placeholders})
+        ORDER BY story_id, sort_order, id
+        """,
+        story_ids,
+    ).fetchall()
+    out: dict[int, list[dict[str, Any]]] = {sid: [] for sid in story_ids}
+    for row in rows:
+        sid = row["story_id"]
+        if sid in out:
+            out[sid].append(_row_to_extra_image(row))
+    return out
+
+
+def attach_extra_images(conn: sqlite3.Connection, stories: list[dict[str, Any]]) -> None:
+    if not stories:
+        return
+    ids = [s["id"] for s in stories]
+    emap = load_extra_images_map(conn, ids)
+    for s in stories:
+        s["extra_images"] = emap.get(s["id"], [])
 
 
 def normalize_story(row: sqlite3.Row) -> dict[str, Any]:
@@ -116,6 +165,7 @@ def normalize_story(row: sqlite3.Row) -> dict[str, Any]:
         "image_url": row["image_url"],
         "image_upload_url": f"/uploads/{row['image_upload_path']}" if row["image_upload_path"] else None,
         "created_at": row["created_at"],
+        "extra_images": [],
     }
 
 
@@ -192,6 +242,7 @@ def get_visible_stories() -> dict[str, Any]:
         ).fetchall()
 
         stories = [normalize_story(row) for row in rows]
+        attach_extra_images(conn, stories)
         reaction_map = get_reaction_map(conn, [story["id"] for story in stories])
         for story in stories:
             story["reactions"] = reaction_map.get(story["id"], {})
@@ -204,7 +255,19 @@ def get_all_stories() -> dict[str, Any]:
     with closing(get_connection()) as conn:
         rows = conn.execute("SELECT * FROM stories ORDER BY id DESC").fetchall()
         stories = [normalize_story(row) for row in rows]
+        attach_extra_images(conn, stories)
         return {"stories": stories}
+
+
+def _parse_extra_url_lines(raw: str | None) -> list[str]:
+    if not raw or not raw.strip():
+        return []
+    parts: list[str] = []
+    for line in raw.replace(",", "\n").split("\n"):
+        t = line.strip()
+        if t:
+            parts.append(t)
+    return parts
 
 
 @app.post("/stories/add")
@@ -215,6 +278,8 @@ async def add_story(
     main_story: str = Form(...),
     image_url: str | None = Form(None),
     image_upload: UploadFile | None = File(None),
+    extra_image_urls: str | None = Form(None),
+    extra_image_uploads: Annotated[list[UploadFile] | None, File()] = None,
 ) -> JSONResponse:
     clean_author = author_name.strip()
     clean_headline = headline.strip()
@@ -255,11 +320,41 @@ async def add_story(
             ),
         )
         story_id = cursor.lastrowid
+
+        sort_order = 0
+        for url in _parse_extra_url_lines(extra_image_urls):
+            conn.execute(
+                """
+                INSERT INTO story_extra_images (story_id, image_url, image_upload_path, sort_order)
+                VALUES (?, ?, NULL, ?)
+                """,
+                (story_id, url, sort_order),
+            )
+            sort_order += 1
+
+        for extra in extra_image_uploads or []:
+            if not extra.filename:
+                continue
+            extension = Path(extra.filename).suffix
+            upload_filename = f"{uuid4().hex}{extension}"
+            upload_target = UPLOAD_DIR / upload_filename
+            content = await extra.read()
+            upload_target.write_bytes(content)
+            conn.execute(
+                """
+                INSERT INTO story_extra_images (story_id, image_url, image_upload_path, sort_order)
+                VALUES (?, NULL, ?, ?)
+                """,
+                (story_id, upload_filename, sort_order),
+            )
+            sort_order += 1
+
         conn.commit()
 
         row = conn.execute("SELECT * FROM stories WHERE id = ?", (story_id,)).fetchone()
         story = normalize_story(row)
         story["reactions"] = {}
+        attach_extra_images(conn, [story])
 
     await manager.broadcast({"type": "story_added", "story_id": story_id})
     return JSONResponse(content={"story": story})
@@ -330,6 +425,7 @@ async def update_story(
         conn.commit()
         row = conn.execute("SELECT * FROM stories WHERE id = ?", (story_id,)).fetchone()
         story = normalize_story(row)
+        attach_extra_images(conn, [story])
         reaction_map = get_reaction_map(conn, [story_id])
         story["reactions"] = reaction_map.get(story_id, {})
 
@@ -350,6 +446,7 @@ async def delete_story(
     story_id: int,
     _token: None = Depends(require_edit_token),
 ) -> JSONResponse:
+    extra_paths: list[str] = []
     with closing(get_connection()) as conn:
         row = conn.execute(
             "SELECT image_upload_path FROM stories WHERE id = ?",
@@ -358,13 +455,20 @@ async def delete_story(
         if not row:
             return JSONResponse(status_code=404, content={"detail": "Story not found."})
         upload_name = row["image_upload_path"]
+        extra_rows = conn.execute(
+            "SELECT image_upload_path FROM story_extra_images WHERE story_id = ? AND image_upload_path IS NOT NULL",
+            (story_id,),
+        ).fetchall()
+        extra_paths = [r["image_upload_path"] for r in extra_rows if r["image_upload_path"]]
         conn.execute("DELETE FROM reactions WHERE story_id = ?", (story_id,))
         conn.execute("DELETE FROM stories WHERE id = ?", (story_id,))
         conn.commit()
 
-    if upload_name:
+    for name in [upload_name] + extra_paths:
+        if not name:
+            continue
         try:
-            path = UPLOAD_DIR / upload_name
+            path = UPLOAD_DIR / name
             if path.is_file():
                 path.unlink()
         except OSError:
