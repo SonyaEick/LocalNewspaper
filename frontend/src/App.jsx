@@ -681,18 +681,23 @@ function App() {
                 Upload Image (optional)
                 <input name="image_upload" type="file" accept="image/*" onChange={handleInputChange} />
               </label>
+              <h4 className="modal-section-title">Additional photos (optional)</h4>
+              <p className="modal-section-hint">
+                Shown in the photo gallery (stack icon on the main image). Add URLs, uploads, or both.
+              </p>
               <label>
-                Optional additional photos — image URLs (one per line)
+                Extra image URLs — one per line
                 <textarea
+                  className="extra-urls-textarea"
                   name="extra_image_urls"
                   value={formData.extra_image_urls}
                   onChange={handleInputChange}
-                  placeholder="https://…"
+                  placeholder="https://example.com/photo.jpg"
                   rows={3}
                 />
               </label>
               <label>
-                Optional additional photos — uploads (select multiple)
+                Extra image files — select multiple
                 <input
                   name="extra_image_uploads"
                   type="file"
