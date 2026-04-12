@@ -278,6 +278,93 @@
   font-size: 0.9rem;
 }
 
+.brief-summary {
+  font-size: 0.9rem;
+  line-height: 1.28;
+}
+
+.brief-expand-btn {
+  margin-top: 0.35rem;
+  align-self: flex-start;
+  border: 1px solid #333;
+  background: #faf7f1;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.brief-expand-btn:hover {
+  background: #efe8d8;
+}
+
+.read-modal-backdrop {
+  z-index: 25;
+}
+
+.read-modal {
+  position: relative;
+  background: #faf7f0;
+  width: min(640px, 94vw);
+  max-height: min(85vh, 900px);
+  overflow: auto;
+  padding: 1.35rem 1.25rem 1.25rem;
+  border: 2px solid #111;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.read-modal-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  font-size: 1.65rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.read-modal-close:hover {
+  color: #000;
+}
+
+.read-modal-headline {
+  margin: 0 1.75rem 0.35rem 0;
+  font-size: 1.45rem;
+  line-height: 1.12;
+  font-weight: 600;
+}
+
+.read-modal-meta {
+  margin-bottom: 0.65rem;
+}
+
+.read-modal-image {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  object-position: center left;
+  margin-bottom: 0.65rem;
+  border: 1px solid #222;
+  background: #ece5d7;
+}
+
+.read-modal-body {
+  white-space: pre-line;
+  text-align: justify;
+  line-height: 1.35;
+  font-size: 0.98rem;
+}
+
 .placeholder-text {
   margin-top: 0.25rem;
   font-style: italic;

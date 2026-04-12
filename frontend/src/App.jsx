@@ -88,6 +88,7 @@ const SLOT_AREA_CLASSES = [
 function App() {
   const [stories, setStories] = useState([])
   const [showForm, setShowForm] = useState(false)
+  const [expandedBriefId, setExpandedBriefId] = useState(null)
   const [showMenu, setShowMenu] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -107,6 +108,24 @@ function App() {
       type: index === 0 ? 'hero' : index <= 6 ? 'secondary' : 'brief',
     }))
   }, [stories])
+
+  const expandedBriefStory =
+    expandedBriefId != null ? stories.find((s) => s.id === expandedBriefId) ?? null : null
+
+  useEffect(() => {
+    if (expandedBriefId != null && !stories.some((s) => s.id === expandedBriefId)) {
+      setExpandedBriefId(null)
+    }
+  }, [stories, expandedBriefId])
+
+  useEffect(() => {
+    if (expandedBriefId == null) return undefined
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setExpandedBriefId(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [expandedBriefId])
 
   const fetchVisibleStories = async () => {
     const response = await fetch(`${API_BASE}/stories/visible`)
@@ -277,7 +296,14 @@ function App() {
               alt={story.headline}
             />
           ) : null}
-          <p>{story.summary_sentence}</p>
+          <p className="brief-summary">{story.summary_sentence}</p>
+          <button
+            type="button"
+            className="brief-expand-btn"
+            onClick={() => setExpandedBriefId(story.id)}
+          >
+            Expand full story
+          </button>
         </>
       )
     }
@@ -376,6 +402,46 @@ function App() {
       <button className="add-story-button" type="button" onClick={() => setShowForm(true)}>
         +
       </button>
+
+      {expandedBriefStory ? (
+        <div
+          className="modal-backdrop read-modal-backdrop"
+          onClick={() => setExpandedBriefId(null)}
+          role="presentation"
+        >
+          <article
+            className="read-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="read-modal-title"
+          >
+            <button
+              type="button"
+              className="read-modal-close"
+              onClick={() => setExpandedBriefId(null)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <h2 id="read-modal-title" className="read-modal-headline">
+              {expandedBriefStory.headline}
+            </h2>
+            <p className="story-meta read-modal-meta">
+              By {expandedBriefStory.author_name} •{' '}
+              {new Date(expandedBriefStory.created_at).toLocaleString()}
+            </p>
+            {getStoryImage(expandedBriefStory) ? (
+              <img
+                className="read-modal-image"
+                src={getStoryImage(expandedBriefStory)}
+                alt={expandedBriefStory.headline}
+              />
+            ) : null}
+            <div className="read-modal-body">{expandedBriefStory.main_story}</div>
+          </article>
+        </div>
+      ) : null}
 
       {showForm ? (
         <div className="modal-backdrop" onClick={() => setShowForm(false)}>
