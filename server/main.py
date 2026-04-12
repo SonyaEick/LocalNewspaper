@@ -9,10 +9,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from fastapi import FastAPI, File, Form, WebSocket, WebSocketDisconnect, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, WebSocket, WebSocketDisconnect, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 BASE_DIR = Path(__file__).resolve().parent
 _data_dir_env = os.environ.get("NEWSPAPER_DATA_DIR", "").strip()
@@ -114,6 +116,30 @@ def normalize_story(row: sqlite3.Row) -> dict[str, Any]:
         "image_upload_url": f"/uploads/{row['image_upload_path']}" if row["image_upload_path"] else None,
         "created_at": row["created_at"],
     }
+
+
+class StoryUpdate(BaseModel):
+    """Send only fields you want to change. Omitted fields stay as-is."""
+
+    author_name: str | None = Field(None, description="Byline / display name")
+    headline: str | None = Field(None, description="Story headline")
+    summary_sentence: str | None = Field(None, description="One-line summary (brief slots)")
+    main_story: str | None = Field(None, description="Full story body")
+    image_url: str | None = Field(None, description="External image URL; empty string clears it")
+    remove_uploaded_image: bool | None = Field(
+        None, description="If true, clears the uploaded file reference (keeps image_url if set)"
+    )
+
+
+edit_token_header = APIKeyHeader(name="X-Edit-Token", auto_error=False)
+
+
+def require_edit_token(x_edit_token: str | None = Security(edit_token_header)) -> None:
+    expected = os.environ.get("NEWSPAPER_EDIT_TOKEN", "").strip()
+    if not expected:
+        return
+    if not x_edit_token or x_edit_token != expected:
+        raise HTTPException(status_code=403, detail="Invalid or missing X-Edit-Token header.")
 
 
 def get_reaction_map(conn: sqlite3.Connection, story_ids: list[int]) -> dict[int, dict[str, int]]:
@@ -235,6 +261,78 @@ async def add_story(
         story["reactions"] = {}
 
     await manager.broadcast({"type": "story_added", "story_id": story_id})
+    return JSONResponse(content={"story": story})
+
+
+@app.patch(
+    "/stories/{story_id}",
+    tags=["stories"],
+    summary="Edit a story (Swagger /docs)",
+    description=(
+        "Typo fixes without SQL. If env `NEWSPAPER_EDIT_TOKEN` is set on the server, click **Authorize** "
+        "and enter the same value for `X-Edit-Token`. If unset, no token is required (dev only)."
+    ),
+)
+async def update_story(
+    story_id: int,
+    body: StoryUpdate,
+    _token: None = Depends(require_edit_token),
+) -> JSONResponse:
+    payload = body.model_dump(exclude_unset=True)
+    remove_upload = payload.pop("remove_uploaded_image", None)
+
+    set_parts: list[str] = []
+    values: list[Any] = []
+
+    text_fields = ("author_name", "headline", "summary_sentence", "main_story")
+    for key in text_fields:
+        if key not in payload:
+            continue
+        val = payload[key]
+        if val is None:
+            continue
+        if isinstance(val, str) and not val.strip():
+            return JSONResponse(
+                status_code=400,
+                content={"detail": f"{key} cannot be empty (omit the field to leave unchanged)."},
+            )
+        set_parts.append(f"{key} = ?")
+        values.append(val.strip() if isinstance(val, str) else val)
+
+    if "image_url" in payload:
+        raw = payload["image_url"]
+        if raw is None:
+            set_parts.append("image_url = ?")
+            values.append(None)
+        else:
+            cleaned = raw.strip() if isinstance(raw, str) else None
+            set_parts.append("image_url = ?")
+            values.append(cleaned or None)
+
+    if remove_upload is True:
+        set_parts.append("image_upload_path = ?")
+        values.append(None)
+
+    if not set_parts:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "No fields to update. Send at least one property in the JSON body."},
+        )
+
+    values.append(story_id)
+    sql = f"UPDATE stories SET {', '.join(set_parts)} WHERE id = ?"
+
+    with closing(get_connection()) as conn:
+        cur = conn.execute(sql, values)
+        if cur.rowcount == 0:
+            return JSONResponse(status_code=404, content={"detail": "Story not found."})
+        conn.commit()
+        row = conn.execute("SELECT * FROM stories WHERE id = ?", (story_id,)).fetchone()
+        story = normalize_story(row)
+        reaction_map = get_reaction_map(conn, [story_id])
+        story["reactions"] = reaction_map.get(story_id, {})
+
+    await manager.broadcast({"type": "story_updated", "story_id": story_id})
     return JSONResponse(content={"story": story})
 
 
