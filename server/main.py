@@ -71,6 +71,7 @@ app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
@@ -334,6 +335,43 @@ async def update_story(
 
     await manager.broadcast({"type": "story_updated", "story_id": story_id})
     return JSONResponse(content={"story": story})
+
+
+@app.delete(
+    "/stories/{story_id}",
+    tags=["stories"],
+    summary="Delete a story (Swagger /docs)",
+    description=(
+        "Removes the story, its reactions, and the uploaded image file if any. "
+        "Same `X-Edit-Token` rules as PATCH when `NEWSPAPER_EDIT_TOKEN` is set."
+    ),
+)
+async def delete_story(
+    story_id: int,
+    _token: None = Depends(require_edit_token),
+) -> JSONResponse:
+    with closing(get_connection()) as conn:
+        row = conn.execute(
+            "SELECT image_upload_path FROM stories WHERE id = ?",
+            (story_id,),
+        ).fetchone()
+        if not row:
+            return JSONResponse(status_code=404, content={"detail": "Story not found."})
+        upload_name = row["image_upload_path"]
+        conn.execute("DELETE FROM reactions WHERE story_id = ?", (story_id,))
+        conn.execute("DELETE FROM stories WHERE id = ?", (story_id,))
+        conn.commit()
+
+    if upload_name:
+        try:
+            path = UPLOAD_DIR / upload_name
+            if path.is_file():
+                path.unlink()
+        except OSError:
+            pass
+
+    await manager.broadcast({"type": "story_deleted", "story_id": story_id})
+    return JSONResponse(content={"ok": True, "deleted_id": story_id})
 
 
 @app.post("/stories/{story_id}/react")
