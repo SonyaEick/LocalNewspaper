@@ -132,6 +132,7 @@
   gap: 0;
   border-top: 1px solid #111;
   border-left: 1px solid #111;
+  align-items: stretch;
 }
 
 .slot {
@@ -141,6 +142,20 @@
   min-height: 124px;
   background: #f6f1e7;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.slot-inner {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.slot-inner--empty {
+  justify-content: center;
 }
 
 .slot h2 {
@@ -273,7 +288,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.22rem;
-  margin-top: 0.42rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(17, 17, 17, 0.1);
 }
 
 .reactions button {

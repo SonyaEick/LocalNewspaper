@@ -345,7 +345,7 @@ function App() {
           >
             <p className="slot-label">{slot.label}</p>
             {slot.story ? (
-              <>
+              <div className="slot-inner">
                 <h2>{slot.story.headline}</h2>
                 <p className="story-meta">
                   By {slot.story.author_name} • {new Date(slot.story.created_at).toLocaleString()}
@@ -363,9 +363,11 @@ function App() {
                     </button>
                   ))}
                 </div>
-              </>
+              </div>
             ) : (
-              <p className="placeholder-text">Waiting for the next story...</p>
+              <div className="slot-inner slot-inner--empty">
+                <p className="placeholder-text">Waiting for the next story...</p>
+              </div>
             )}
           </article>
         ))}
