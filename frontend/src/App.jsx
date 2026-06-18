@@ -3,25 +3,20 @@ import { createPortal } from 'react-dom'
 import './App.css'
 
 /**
- * Dev: talk to local FastAPI.
- * Prod: set VITE_API_BASE in .env.production (e.g. https://yourdomain.com), or leave unset to use
- * same-origin URLs (/stories/visible, /ws, …) when Caddy proxies those paths to FastAPI.
+ * API origin: VITE_API_BASE if set; else local FastAPI in dev; else same-origin in prod builds.
  */
 function apiBase() {
-  if (import.meta.env.DEV) {
-    return 'http://localhost:8000'
-  }
   const fromEnv = import.meta.env.VITE_API_BASE
   if (fromEnv) {
     return String(fromEnv).replace(/\/$/, '')
+  }
+  if (import.meta.env.DEV) {
+    return 'http://localhost:8000'
   }
   return ''
 }
 
 function wsUrl() {
-  if (import.meta.env.DEV) {
-    return 'ws://localhost:8000/ws'
-  }
   const explicit = import.meta.env.VITE_WS_URL
   if (explicit) {
     return String(explicit)
@@ -31,6 +26,9 @@ function wsUrl() {
     const url = new URL(String(base))
     const proto = url.protocol === 'https:' ? 'wss:' : 'ws:'
     return `${proto}//${url.host}/ws`
+  }
+  if (import.meta.env.DEV) {
+    return 'ws://localhost:8000/ws'
   }
   if (typeof window !== 'undefined') {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -355,16 +353,35 @@ function App() {
   }
 
   function ImageWithGalleryOverlay({ story, children, className }) {
+    const slides = buildGallerySlides(story)
+    const canExpand = slides.length > 0
     const showBadge = hasExtraPhotos(story)
+    const expandLabel =
+      slides.length > 1 ? `View ${slides.length} photos` : 'View photo full size'
+
     return (
-      <div className={`story-image-frame ${className ?? ''}`}>
-        {children}
+      <div
+        className={`story-image-frame ${canExpand ? 'story-image-frame--expandable' : ''} ${className ?? ''}`}
+      >
+        {canExpand ? (
+          <button
+            type="button"
+            className="story-image-expand-btn"
+            onClick={() => openPhotoLightbox(story, 0)}
+            aria-label={expandLabel}
+            title={expandLabel}
+          >
+            {children}
+          </button>
+        ) : (
+          children
+        )}
         {showBadge ? (
           <button
             type="button"
             className="gallery-corner-btn"
             onClick={() => openPhotoLightbox(story, 0)}
-            aria-label={`View ${story.extra_images.length} additional photos`}
+            aria-label={`View ${slides.length} photos`}
             title="More photos"
           >
             <GalleryStackIcon />
@@ -672,20 +689,15 @@ function App() {
                     />
                   </label>
                   <label>
-                    Image URL (optional)
+                    Image Upload Main Image using URL
                     <input name="image_url" value={formData.image_url} onChange={handleInputChange} />
                   </label>
                   <label>
-                    Upload main image (optional)
+                    Upload Main Image from Disk
                     <input name="image_upload" type="file" accept="image/*" onChange={handleInputChange} />
                   </label>
-                  <h4 className="modal-section-title">Additional photos (optional)</h4>
-                  <p className="modal-section-hint">
-                    Gallery on the main image (stack icon). URLs, files, or both — scroll if needed on small
-                    screens.
-                  </p>
                   <label>
-                    Extra image URLs — one per line
+                    Add Extra images from URLs (Optional)
                     <textarea
                       className="extra-urls-textarea"
                       name="extra_image_urls"
@@ -696,7 +708,7 @@ function App() {
                     />
                   </label>
                   <label>
-                    Extra image files — select multiple
+                    Add Extra Images from Disk (Optional)
                     <input
                       name="extra_image_uploads"
                       type="file"
