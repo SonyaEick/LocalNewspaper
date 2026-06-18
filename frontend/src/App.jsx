@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import './App.css'
 
 /**
@@ -647,77 +648,81 @@ function App() {
         </div>
       ) : null}
 
-      {showForm ? (
-        <div className="modal-backdrop" onClick={() => setShowForm(false)}>
-          <section className="modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Submit Story</h3>
-            <form onSubmit={handleSubmit}>
-              <label>
-                Your Name
-                <input name="author_name" value={formData.author_name} onChange={handleInputChange} required />
-              </label>
-              <label>
-                Headline
-                <input name="headline" value={formData.headline} onChange={handleInputChange} required />
-              </label>
-              <label>
-                One-Sentence Summary
-                <input
-                  name="summary_sentence"
-                  value={formData.summary_sentence}
-                  onChange={handleInputChange}
-                  required
-                />
-              </label>
-              <label>
-                Main Story
-                <textarea name="main_story" value={formData.main_story} onChange={handleInputChange} required />
-              </label>
-              <label>
-                Image URL (optional)
-                <input name="image_url" value={formData.image_url} onChange={handleInputChange} />
-              </label>
-              <label>
-                Upload Image (optional)
-                <input name="image_upload" type="file" accept="image/*" onChange={handleInputChange} />
-              </label>
-              <h4 className="modal-section-title">Additional photos (optional)</h4>
-              <p className="modal-section-hint">
-                Shown in the photo gallery (stack icon on the main image). Add URLs, uploads, or both.
-              </p>
-              <label>
-                Extra image URLs — one per line
-                <textarea
-                  className="extra-urls-textarea"
-                  name="extra_image_urls"
-                  value={formData.extra_image_urls}
-                  onChange={handleInputChange}
-                  placeholder="https://example.com/photo.jpg"
-                  rows={3}
-                />
-              </label>
-              <label>
-                Extra image files — select multiple
-                <input
-                  name="extra_image_uploads"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleInputChange}
-                />
-              </label>
-              <div className="form-actions">
-                <button type="button" className="ghost" onClick={() => setShowForm(false)}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Publishing...' : 'Publish'}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
+      {showForm
+        ? createPortal(
+            <div className="modal-backdrop modal-backdrop--submit" onClick={() => setShowForm(false)}>
+              <section className="modal" onClick={(event) => event.stopPropagation()}>
+                <h3>Submit Story</h3>
+                <form onSubmit={handleSubmit}>
+                  <label>
+                    Your Name
+                    <input name="author_name" value={formData.author_name} onChange={handleInputChange} required />
+                  </label>
+                  <label>
+                    Headline
+                    <input name="headline" value={formData.headline} onChange={handleInputChange} required />
+                  </label>
+                  <label>
+                    One-Sentence Summary
+                    <input
+                      name="summary_sentence"
+                      value={formData.summary_sentence}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Image URL (optional)
+                    <input name="image_url" value={formData.image_url} onChange={handleInputChange} />
+                  </label>
+                  <label>
+                    Upload main image (optional)
+                    <input name="image_upload" type="file" accept="image/*" onChange={handleInputChange} />
+                  </label>
+                  <h4 className="modal-section-title">Additional photos (optional)</h4>
+                  <p className="modal-section-hint">
+                    Gallery on the main image (stack icon). URLs, files, or both — scroll if needed on small
+                    screens.
+                  </p>
+                  <label>
+                    Extra image URLs — one per line
+                    <textarea
+                      className="extra-urls-textarea"
+                      name="extra_image_urls"
+                      value={formData.extra_image_urls}
+                      onChange={handleInputChange}
+                      placeholder="https://example.com/photo.jpg"
+                      rows={3}
+                    />
+                  </label>
+                  <label>
+                    Extra image files — select multiple
+                    <input
+                      name="extra_image_uploads"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleInputChange}
+                    />
+                  </label>
+                  <label>
+                    Main Story
+                    <textarea name="main_story" value={formData.main_story} onChange={handleInputChange} required />
+                  </label>
+                  <div className="form-actions">
+                    <button type="button" className="ghost" onClick={() => setShowForm(false)}>
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? 'Publishing...' : 'Publish'}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

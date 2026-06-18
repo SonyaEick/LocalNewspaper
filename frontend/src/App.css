@@ -638,6 +638,10 @@
   overflow-y: auto;
 }
 
+.modal-backdrop--submit {
+  z-index: 40;
+}
+
 .modal {
   background: #fff;
   width: min(700px, 100%);
